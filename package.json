@@ -1,0 +1,22 @@
+{
+  "name": "phonics-quest",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@phonicsquest/admin",
+    "dev:admin": "npm run dev --workspace=@phonicsquest/admin",
+    "dev:api": "npm run dev --workspace=@phonicsquest/api",
+    "dev:mobile": "npm run dev --workspace=@phonicsquest/mobile",
+    "build": "npm run build --workspaces --if-present",
+    "db:push": "npm run prisma:db:push --workspace=@phonicsquest/api",
+    "db:seed": "npm run prisma:seed --workspace=@phonicsquest/api",
+    "db:setup": "npm run db:push && npm run db:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

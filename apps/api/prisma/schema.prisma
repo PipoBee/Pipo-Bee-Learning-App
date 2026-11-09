@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  PARENT
+  STUDENT
+}
+
+enum TaskType {
+  LISTEN_PICK
+  SOUND_MATCHING
+  BLEND_READ
+  SAY_SOUND
+  TRACE_LETTER
+  SPELL_WORD
+  LEVEL_TEST
+}
+
+model User {
+  id           String           @id @default(uuid())
+  email        String           @unique
+  passwordHash String
+  fullName     String
+  role         Role             @default(PARENT)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  students     StudentProfile[]
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id             String                 @id @default(uuid())
+  userId         String
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName    String
+  avatarId       String                 @default("parrot_01")
+  age            Int                    @default(6)
+  totalStars     Int                    @default(0)
+  totalCoins     Int                    @default(0)
+  streakDays     Int                    @default(1)
+  lastActiveDate DateTime               @default(now())
+  clientId       String?                @unique
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  attempts       Attempt[]
+  progress       StudentProgress[]
+  soundMastery   StudentSoundMastery[]
+
+  @@map("student_profiles")
+}
+
+model World {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  title       String
+  description String
+  orderIndex  Int
+  themeColor  String   @default("#4ADE80")
+  accentColor String   @default("#16A34A")
+  iconName    String   @default("palm-tree")
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  levels      Level[]
+
+  @@map("worlds")
+}
+
+model Level {
+  id                 String            @id @default(uuid())
+  worldId            String
+  world              World             @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  title              String
+  subtitle           String
+  soundLabel         String
+  orderIndex         Int
+  requiredStars      Int               @default(0)
+  passThresholdScore Int               @default(70)
+  isTestLevel        Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  tasks              Task[]
+  progress           StudentProgress[]
+
+  @@map("levels")
+}
+
+model Task {
+  id                  String      @id @default(uuid())
+  levelId             String
+  level               Level       @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  taskType            TaskType
+  orderIndex          Int
+  title               String
+  instructionText     String
+  instructionAudioUrl String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  items               TaskItem[]
+  attempts            Attempt[]
+
+  @@map("tasks")
+}
+
+model TaskItem {
+  id              String    @id @default(uuid())
+  taskId          String
+  task            Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  orderIndex      Int
+  targetGrapheme  String
+  targetPhoneme   String
+  targetWord      String?
+  promptText      String
+  promptAudioUrl  String?
+  promptImageUrl  String?
+  optionsJson     Json?
+  strokeDataJson  Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  attempts        Attempt[]
+
+  @@map("task_items")
+}
+
+model Attempt {
+  id                 String          @id @default(uuid())
+  clientId           String          @unique
+  studentId          String
+  student            StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  taskId             String
+  task               Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskItemId         String?
+  taskItem           TaskItem?       @relation(fields: [taskItemId], references: [id], onDelete: SetNull)
+  isCorrect          Boolean
+  score              Int             @default(0)
+  speechConfidence   Float?
+  phonemeScoresJson  Json?
+  responseDataJson   Json?
+  durationMs         Int             @default(0)
+  attemptNumber      Int             @default(1)
+  createdAt          DateTime        @default(now())
+  syncedAt           DateTime        @default(now())
+
+  @@map("attempts")
+}
+
+model StudentProgress {
+  id            String         @id @default(uuid())
+  studentId     String
+  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  levelId       String
+  level         Level          @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  isUnlocked    Boolean        @default(false)
+  isCompleted   Boolean        @default(false)
+  starsEarned   Int            @default(0)
+  highScore     Int            @default(0)
+  totalAttempts Int            @default(0)
+  lastAttemptAt DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  syncedAt      DateTime       @default(now())
+
+  @@unique([studentId, levelId])
+  @@map("student_progress")
+}
+
+model StudentSoundMastery {
+  id              String         @id @default(uuid())
+  studentId       String
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  phoneme         String
+  masteryScore    Float          @default(0.0)
+  totalAttempts   Int            @default(0)
+  correctAttempts Int            @default(0)
+  isWeakFlag      Boolean        @default(false)
+  lastPracticedAt DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([studentId, phoneme])
+  @@map("student_sound_mastery")
+}
+
+model AudioAsset {
+  id         String   @id @default(uuid())
+  fileName   String
+  storageKey String   @unique
+  publicUrl  String
+  mimeType   String
+  sizeBytes  Int
+  category   String   @default("PHONEME")
+  transcript String?
+  createdAt  DateTime @default(now())
+
+  @@map("audio_assets")
+}

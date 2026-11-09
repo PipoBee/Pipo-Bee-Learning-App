@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pipo Bee Web App</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #F1FBF5; font-family: Lexend, sans-serif; color: #0B3B33; }
+      .pipo-splash { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #F1FBF5; }
+      .pipo-splash-inner { text-align: center; padding: 24px; }
+      .pipo-splash-wordmark { display: flex; justify-content: center; gap: 8px; }
+      .pipo-splash-pipo, .pipo-splash-bee-word { font-weight: 700; font-size: 42px; color: #0B3B33; letter-spacing: -1px; }
+      .pipo-splash-bee-word { background: #FFD24D; padding: 8px 14px 10px; border-radius: 14px; }
+      .pipo-splash-tag { margin: 12px 0 0; font-weight: 600; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #0B3B33; }
+      .pipo-splash-track { width: min(240px, 70vw); height: 12px; margin: 22px auto 10px; background: #D1FAE5; border-radius: 999px; overflow: hidden; }
+      .pipo-splash-fill { height: 100%; width: 42%; background: #FFD24D; border-radius: 999px; }
+      .pipo-splash-caption { font-weight: 500; font-size: 15px; color: #5F7A73; }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="pipo-splash" role="status" aria-label="Pipo Bee is loading">
+        <div class="pipo-splash-inner">
+          <div class="pipo-splash-wordmark">
+            <span class="pipo-splash-pipo">Pipo</span>
+            <span class="pipo-splash-bee-word">Bee</span>
+          </div>
+          <p class="pipo-splash-tag">Sounds to Stories</p>
+          <div class="pipo-splash-track" aria-hidden="true">
+            <div class="pipo-splash-fill"></div>
+          </div>
+          <p class="pipo-splash-caption">Getting your hive ready…</p>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

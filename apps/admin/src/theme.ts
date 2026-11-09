@@ -1,0 +1,26 @@
+export const Brand = {
+  forest: '#0B3B33',
+  deepLeaf: '#145A4D',
+  leaf: '#1C7766',
+  meadow: '#F1FBF5',
+  white: '#FFFFFF',
+  mist: '#CDEBDC',
+  muted: '#3F6B62',
+  honey: '#FFD24D',
+  mint: '#6EE7B7',
+  blossom: '#FDA4AF',
+  sky: '#7DD3FC',
+  softGreen: '#D6F3E4',
+  danger: '#BE123C',
+  dangerSoft: '#FFE4E6',
+  success: '#0B3B33',
+  successSoft: '#D1FAE5',
+
+  // legacy aliases used by older screens
+  ink: '#0B3B33',
+  inkSoft: '#145A4D',
+  cream: '#F1FBF5',
+  blush: '#FDA4AF',
+  honeySoft: '#FFE9A3',
+  skyDeep: '#38BDF8',
+} as const;
