@@ -52,6 +52,10 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
           return;
         }
         const data = await AuthAPI.register({ fullName, email, password, role });
+        if (!('user' in data) || !data.user) {
+          setError('Account created. Check your email to confirm, then sign in.');
+          return;
+        }
         playLoginMusic();
         onAuthSuccess(data.user);
         return;

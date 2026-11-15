@@ -16,6 +16,7 @@ interface ShellProps {
   onTabChange?: (id: string) => void;
   onLogout: () => void;
   children: React.ReactNode;
+  fullWidth?: boolean;
 }
 
 export const Shell: React.FC<ShellProps> = ({
@@ -26,6 +27,7 @@ export const Shell: React.FC<ShellProps> = ({
   onTabChange,
   onLogout,
   children,
+  fullWidth = false,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -105,7 +107,7 @@ export const Shell: React.FC<ShellProps> = ({
         </div>
       </header>
 
-      <main className="app-main">{children}</main>
+      <main className={fullWidth ? 'app-main app-main-full' : 'app-main'}>{children}</main>
     </div>
   );
 };

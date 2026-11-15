@@ -1,5 +1,5 @@
-import React from 'react';
-import { CheckCircle2, Flame, Lock, Star, Target, Trophy } from 'lucide-react';
+import React, { useState } from 'react';
+import { Award, CheckCircle2, Flame, Lock, Sparkles, Star, Target, Trophy, Volume2 } from 'lucide-react';
 
 /** Kept for admin/parent screens that still map avatar ids. */
 export const AVATAR_EMOJI: Record<string, string> = {
@@ -11,7 +11,7 @@ export const AVATAR_EMOJI: Record<string, string> = {
   bunny_01: 'B',
 };
 
-type LevelWork = {
+export type LevelWork = {
   id: string;
   title: string;
   subtitle: string;
@@ -24,7 +24,7 @@ type LevelWork = {
   highScore: number;
 };
 
-type Dashboard = {
+export type DashboardData = {
   displayName: string;
   avatarId: string;
   age?: number;
@@ -53,134 +53,247 @@ type Dashboard = {
 };
 
 interface Props {
-  data: Dashboard;
+  data: DashboardData;
   heading?: string;
   onPlayLevel?: () => void;
+  compactHeader?: boolean;
 }
 
-export const StudentProgressPanel: React.FC<Props> = ({ data, heading, onPlayLevel }) => {
+type PanelTab = 'mastery' | 'upnext' | 'completed';
+
+export const StudentProgressPanel: React.FC<Props> = ({
+  data,
+  heading,
+  onPlayLevel,
+  compactHeader = false,
+}) => {
   const completion = data.completion || { completedCount: 0, totalLevels: 0, percent: 0, levels: [] };
   const pending = data.pending || { ready: [], upcoming: [] };
+  const mastery = data.soundMastery || [];
   const initial = (data.displayName?.trim()?.[0] || 'P').toUpperCase();
 
+  const defaultTab: PanelTab =
+    mastery.length > 0 ? 'mastery' : pending.ready.length > 0 ? 'upnext' : 'completed';
+  const [tab, setTab] = useState<PanelTab>(defaultTab);
+
   return (
-    <div style={styles.container}>
-      <div style={styles.studentBanner}>
-        <div style={styles.avatarCircle} aria-hidden="true">{initial}</div>
-        <div style={styles.studentInfo}>
-          <div style={styles.studentTitleRow}>
-            <h2 style={styles.studentName}>{heading || data.displayName}</h2>
-            <span style={styles.streakBadge}>
-              <Flame size={14} strokeWidth={2.2} aria-hidden="true" />
-              {data.streakDays} Day Streak
-            </span>
+    <div className="spp-root">
+      {!compactHeader && (
+        <div className="spp-banner">
+          <div className="spp-banner-glow" aria-hidden="true" />
+          <div className="spp-avatar" aria-hidden="true">
+            <span>{initial}</span>
+            <span className="spp-avatar-ring" />
           </div>
-          <p style={styles.studentSubtitle}>
-            {data.age ? `Age ${data.age} • ` : ''}
-            Current focus: {data.currentLevelTitle}
-          </p>
+          <div className="spp-banner-info">
+            <div className="spp-banner-top">
+              <h2 className="spp-name">{heading || data.displayName}</h2>
+              <span className="spp-streak">
+                <Flame size={14} strokeWidth={2.4} aria-hidden="true" />
+                {data.streakDays} Day Streak
+              </span>
+            </div>
+            <p className="spp-focus">
+              {data.age ? `Age ${data.age} • ` : ''}
+              Current focus: <strong>{data.currentLevelTitle}</strong>
+            </p>
+          </div>
+          <div className="spp-ring-wrap" aria-label={`${completion.percent}% course complete`}>
+            <svg className="spp-ring" viewBox="0 0 64 64">
+              <circle className="spp-ring-track" cx="32" cy="32" r="26" />
+              <circle
+                className="spp-ring-fill"
+                cx="32"
+                cy="32"
+                r="26"
+                strokeDasharray={`${Math.round((completion.percent / 100) * 163.36)} 163.36`}
+              />
+            </svg>
+            <div className="spp-ring-label">
+              <strong>{completion.percent}%</strong>
+              <span>Done</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rich 4-card KPI Bento Row */}
+      <div className="spp-kpi-grid">
+        <div className="spp-kpi-card spp-kpi-honey">
+          <div className="spp-kpi-icon">
+            <Star size={20} strokeWidth={2.3} aria-hidden="true" />
+          </div>
+          <div className="spp-kpi-body">
+            <div className="spp-kpi-value">{data.totalStars}</div>
+            <div className="spp-kpi-label">Total Stars</div>
+          </div>
+          <Sparkles className="spp-kpi-watermark" size={44} strokeWidth={1.5} aria-hidden="true" />
+        </div>
+
+        <div className="spp-kpi-card spp-kpi-mint">
+          <div className="spp-kpi-icon">
+            <Trophy size={20} strokeWidth={2.3} aria-hidden="true" />
+          </div>
+          <div className="spp-kpi-body">
+            <div className="spp-kpi-value">{data.totalCoins}</div>
+            <div className="spp-kpi-label">Earned Coins</div>
+          </div>
+          <Award className="spp-kpi-watermark" size={44} strokeWidth={1.5} aria-hidden="true" />
+        </div>
+
+        <div className="spp-kpi-card spp-kpi-sky">
+          <div className="spp-kpi-icon">
+            <Target size={20} strokeWidth={2.3} aria-hidden="true" />
+          </div>
+          <div className="spp-kpi-body">
+            <div className="spp-kpi-value">{data.overallAccuracy}%</div>
+            <div className="spp-kpi-label">Accuracy</div>
+          </div>
+          <Target className="spp-kpi-watermark" size={44} strokeWidth={1.5} aria-hidden="true" />
+        </div>
+
+        <div className="spp-kpi-card spp-kpi-blossom">
+          <div className="spp-kpi-icon">
+            <CheckCircle2 size={20} strokeWidth={2.3} aria-hidden="true" />
+          </div>
+          <div className="spp-kpi-body">
+            <div className="spp-kpi-value">
+              {completion.completedCount}
+              <span className="spp-kpi-denom">/{completion.totalLevels || 26}</span>
+            </div>
+            <div className="spp-kpi-label">Levels Done</div>
+          </div>
+          <CheckCircle2 className="spp-kpi-watermark" size={44} strokeWidth={1.5} aria-hidden="true" />
         </div>
       </div>
 
-      <div style={styles.kpiGrid}>
-        <Kpi icon={<Star size={22} strokeWidth={2.2} aria-hidden="true" />} value={data.totalStars} label="Total Stars" />
-        <Kpi icon={<Trophy size={22} strokeWidth={2.2} aria-hidden="true" />} value={data.totalCoins} label="Earned Coins" />
-        <Kpi icon={<Target size={22} strokeWidth={2.2} aria-hidden="true" />} value={`${data.overallAccuracy}%`} label="Accuracy" />
-        <Kpi icon={<CheckCircle2 size={22} strokeWidth={2.2} aria-hidden="true" />} value={`${completion.percent}%`} label="Course Complete" />
-      </div>
-
+      {/* Practice Boost Strip (if weak words exist) */}
       {data.weakWords && data.weakWords.length > 0 && (
-        <div style={styles.alertCard}>
-          <div>
-            <h3 style={styles.alertTitle}>Needs practice</h3>
-            <p style={styles.alertDesc}>These words are linked to weaker sounds.</p>
+        <div className="spp-boost-strip">
+          <div className="spp-boost-head">
+            <span className="spp-boost-dot" aria-hidden="true" />
+            <strong>Practice boost:</strong>
+            <span>tricky words to review</span>
           </div>
-          <div style={styles.weakWordChips}>
-            {data.weakWords.map((word) => (
-              <span key={word} style={styles.weakWordChip}>{word}</span>
+          <div className="spp-boost-chips">
+            {data.weakWords.slice(0, 6).map((word) => (
+              <span key={word} className="spp-boost-chip">{word}</span>
             ))}
           </div>
         </div>
       )}
 
-      <section style={styles.sectionCard}>
-        <h3 style={styles.sectionTitle}>Progress</h3>
-        <p style={styles.sectionSubtitle}>Sound accuracy and current mastery.</p>
-        {data.soundMastery && data.soundMastery.length > 0 ? (
-          <div style={styles.masteryGrid}>
-            {data.soundMastery.map((item) => {
-              const pct = Math.round(item.masteryScore * 100);
-              const isWeak = item.isWeak || pct < 65;
-              return (
-                <div key={item.phoneme} style={styles.masteryItem}>
-                  <div style={styles.masteryTopRow}>
-                    <div style={styles.soundCircle}>/{item.phoneme}/</div>
-                    <div>
-                      <span style={styles.masteryPercent}>{pct}%</span>
-                      <span style={styles.masteryAttempts}>{item.attempts} attempts</span>
-                    </div>
-                  </div>
-                  <div style={styles.progressBarTrack}>
-                    <div
-                      style={{
-                        ...styles.progressBarFill,
-                        width: `${pct}%`,
-                        backgroundColor: isWeak ? 'var(--danger)' : pct >= 85 ? 'var(--leaf)' : 'var(--honey)',
-                      }}
-                    />
-                  </div>
-                  <div style={styles.masteryStatus}>
-                    {isWeak ? (
-                      <span style={styles.statusWeak}>Needs Practice</span>
-                    ) : pct >= 85 ? (
-                      <span style={styles.statusMastered}>Mastered</span>
-                    ) : (
-                      <span style={styles.statusProficient}>Proficient</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+      {/* Segmented Activity & Mastery Card (replaces 3 long stacked sections) */}
+      <section className="spp-card">
+        <div className="spp-card-head">
+          <div className="spp-seg" role="tablist" aria-label="Progress details">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'mastery'}
+              className={`spp-seg-btn${tab === 'mastery' ? ' is-on' : ''}`}
+              onClick={() => setTab('mastery')}
+            >
+              <Volume2 size={15} strokeWidth={2.3} aria-hidden="true" />
+              Sound Mastery
+              <span className="spp-seg-count">{mastery.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'upnext'}
+              className={`spp-seg-btn${tab === 'upnext' ? ' is-on' : ''}`}
+              onClick={() => setTab('upnext')}
+            >
+              <Sparkles size={15} strokeWidth={2.3} aria-hidden="true" />
+              Up Next
+              <span className="spp-seg-count">{pending.ready.length + pending.upcoming.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'completed'}
+              className={`spp-seg-btn${tab === 'completed' ? ' is-on' : ''}`}
+              onClick={() => setTab('completed')}
+            >
+              <CheckCircle2 size={15} strokeWidth={2.3} aria-hidden="true" />
+              Completed
+              <span className="spp-seg-count">{completion.levels.length}</span>
+            </button>
           </div>
-        ) : (
-          <div style={styles.emptyState}>No sound attempts yet. Start the first unlocked lesson.</div>
-        )}
-      </section>
-
-      <section style={styles.sectionCard}>
-        <div style={styles.sectionHead}>
-          <div>
-            <h3 style={styles.sectionTitle}>Completion</h3>
-            <p style={styles.sectionSubtitle}>
-              {completion.completedCount} of {completion.totalLevels} levels finished
-            </p>
-          </div>
-          <span style={styles.countPill}>{completion.percent}%</span>
         </div>
-        {completion.levels.length === 0 ? (
-          <div style={styles.emptyState}>No levels completed yet.</div>
-        ) : (
-          <div style={styles.levelList}>
-            {completion.levels.map((level) => (
-              <LevelRow key={level.id} level={level} tone="done" onPlay={onPlayLevel} />
-            ))}
+
+        {tab === 'mastery' && (
+          <div className="spp-panel">
+            {mastery.length > 0 ? (
+              <div className="spp-mastery-grid">
+                {mastery.map((item) => {
+                  const pct = Math.round(item.masteryScore * 100);
+                  const isWeak = item.isWeak || pct < 65;
+                  const tone = isWeak ? 'weak' : pct >= 85 ? 'mastered' : 'good';
+                  return (
+                    <div key={item.phoneme} className={`spp-sound-tile spp-sound-${tone}`}>
+                      <div className="spp-sound-top">
+                        <span className="spp-sound-badge">/{item.phoneme}/</span>
+                        <span className="spp-sound-pct">{pct}%</span>
+                      </div>
+                      <div className="spp-sound-bar">
+                        <div className="spp-sound-fill" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="spp-sound-meta">
+                        <span>{isWeak ? 'Needs practice' : pct >= 85 ? 'Mastered' : 'Growing'}</span>
+                        <span>{item.attempts} tries</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="spp-empty">
+                <div className="spp-empty-badge" aria-hidden="true">Aa</div>
+                <div>
+                  <strong>No sound attempts yet</strong>
+                  <p>Start your first unlocked lesson to light up your sound mastery board.</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
-      </section>
 
-      <section style={styles.sectionCard}>
-        <h3 style={styles.sectionTitle}>Pending work</h3>
-        <p style={styles.sectionSubtitle}>Ready now, then upcoming locked lessons.</p>
-        {pending.ready.length === 0 && pending.upcoming.length === 0 ? (
-          <div style={styles.emptyState}>All caught up — no pending lessons.</div>
-        ) : (
-          <div style={styles.levelList}>
-            {pending.ready.map((level) => (
-              <LevelRow key={level.id} level={level} tone="ready" onPlay={onPlayLevel} />
-            ))}
-            {pending.upcoming.map((level) => (
-              <LevelRow key={level.id} level={level} tone="locked" />
-            ))}
+        {tab === 'upnext' && (
+          <div className="spp-panel">
+            {pending.ready.length === 0 && pending.upcoming.length === 0 ? (
+              <div className="spp-empty">
+                <strong>All caught up!</strong>
+                <p>Every lesson in this world is complete.</p>
+              </div>
+            ) : (
+              <div className="spp-level-grid">
+                {pending.ready.map((level) => (
+                  <CompactLevelCard key={level.id} level={level} tone="ready" onPlay={onPlayLevel} />
+                ))}
+                {pending.upcoming.slice(0, 6).map((level) => (
+                  <CompactLevelCard key={level.id} level={level} tone="locked" />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'completed' && (
+          <div className="spp-panel">
+            {completion.levels.length === 0 ? (
+              <div className="spp-empty">
+                <strong>No completed levels yet</strong>
+                <p>Finish a lesson to earn stars and see your trophies here.</p>
+              </div>
+            ) : (
+              <div className="spp-level-grid">
+                {completion.levels.map((level) => (
+                  <CompactLevelCard key={level.id} level={level} tone="done" onPlay={onPlayLevel} />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -188,341 +301,45 @@ export const StudentProgressPanel: React.FC<Props> = ({ data, heading, onPlayLev
   );
 };
 
-const Kpi: React.FC<{ icon: React.ReactNode; value: string | number; label: string }> = ({
-  icon,
-  value,
-  label,
-}) => (
-  <div style={styles.kpiCard}>
-    <span style={styles.kpiIcon}>{icon}</span>
-    <div>
-      <div style={styles.kpiValue}>{value}</div>
-      <div style={styles.kpiLabel}>{label}</div>
-    </div>
-  </div>
-);
-
-const LevelRow: React.FC<{
+const CompactLevelCard: React.FC<{
   level: LevelWork;
   tone: 'done' | 'ready' | 'locked';
   onPlay?: () => void;
 }> = ({ level, tone, onPlay }) => {
-  const canPlay = Boolean(onPlay) && (level.soundLabel === 's' || level.title?.includes('/s/') || level.title?.toLowerCase().includes('alphabet'));
+  const canPlay =
+    Boolean(onPlay) &&
+    (level.soundLabel === 's' ||
+      level.title?.includes('/s/') ||
+      level.title?.toLowerCase().includes('alphabet') ||
+      tone === 'ready');
 
   return (
-    <div style={styles.levelRow}>
-      <div style={styles.soundBadge}>{level.soundLabel}</div>
-      <div style={{ flex: 1 }}>
-        <div style={styles.levelTitleRow}>
+    <div className={`spp-lcard spp-lcard-${tone}`}>
+      <div className="spp-lcard-badge">{level.soundLabel}</div>
+      <div className="spp-lcard-info">
+        <div className="spp-lcard-title-row">
           <strong>{level.title}</strong>
-          {level.isTestLevel && <span style={styles.testBadge}>Test</span>}
+          {level.isTestLevel && <span className="spp-test-tag">Test</span>}
         </div>
-        <p style={styles.levelMeta}>
+        <span className="spp-lcard-sub">
           {level.worldTitle} • {level.subtitle}
-        </p>
+        </span>
       </div>
       {canPlay ? (
-        <button onClick={onPlay} style={styles.playChip}>
-          {tone === 'done' ? 'Practice' : 'Play'}
+        <button type="button" onClick={onPlay} className="spp-lcard-btn">
+          {tone === 'done' ? 'Replay' : 'Play'}
         </button>
       ) : (
-        <span
-          style={{
-            ...styles.statusChip,
-            backgroundColor: tone === 'done' ? 'var(--mint)' : tone === 'ready' ? 'var(--sky)' : 'var(--mist)',
-            color: 'var(--forest)',
-          }}
-        >
-          {tone === 'done'
-            ? `${level.starsEarned || 1} star${(level.starsEarned || 1) === 1 ? '' : 's'} • Done`
-            : tone === 'ready'
-              ? 'Ready now'
-              : (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <Lock size={12} strokeWidth={2.2} aria-hidden="true" /> Locked
-                </span>
-              )}
+        <span className={`spp-lcard-pill spp-lcard-pill-${tone}`}>
+          {tone === 'done' ? (
+            `${'★'.repeat(Math.max(1, level.starsEarned || 1))}`
+          ) : tone === 'ready' ? (
+            'Ready'
+          ) : (
+            <Lock size={13} strokeWidth={2.2} aria-hidden="true" />
+          )}
         </span>
       )}
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '24px',
-  },
-  studentBanner: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px',
-    backgroundColor: 'var(--white)',
-    padding: '24px',
-    borderRadius: '26px',
-    border: '1px solid var(--mist)',
-    boxShadow: 'var(--shadow-card)',
-  },
-  avatarCircle: {
-    width: '64px',
-    height: '64px',
-    borderRadius: '32px',
-    backgroundColor: 'var(--honey)',
-    color: 'var(--forest)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    fontSize: '24px',
-    fontWeight: 700,
-  },
-  studentInfo: {
-    flex: 1,
-  },
-  studentTitleRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    flexWrap: 'wrap',
-  },
-  studentName: {
-    fontSize: '24px',
-    fontWeight: 600,
-    color: 'var(--forest)',
-  },
-  streakBadge: {
-    backgroundColor: 'var(--meadow)',
-    color: 'var(--forest)',
-    fontWeight: 600,
-    fontSize: '12px',
-    padding: '6px 10px',
-    borderRadius: '999px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-  },
-  studentSubtitle: {
-    fontSize: '14px',
-    color: 'var(--muted)',
-    marginTop: '4px',
-    fontWeight: 500,
-  },
-  kpiGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-    gap: '16px',
-  },
-  kpiCard: {
-    backgroundColor: 'var(--white)',
-    padding: '20px',
-    borderRadius: '18px',
-    border: '1px solid var(--mist)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    boxShadow: 'var(--shadow-card)',
-  },
-  kpiIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    background: 'var(--meadow)',
-    color: 'var(--forest)',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiValue: {
-    fontSize: '26px',
-    fontWeight: 700,
-    color: 'var(--forest)',
-  },
-  kpiLabel: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: 'var(--muted)',
-  },
-  alertCard: {
-    backgroundColor: 'var(--danger-soft)',
-    borderRadius: '18px',
-    padding: '20px 24px',
-  },
-  alertTitle: {
-    fontSize: '16px',
-    fontWeight: 700,
-    color: 'var(--danger)',
-  },
-  alertDesc: {
-    fontSize: '14px',
-    color: 'var(--danger)',
-    marginTop: '4px',
-  },
-  weakWordChips: {
-    display: 'flex',
-    gap: '10px',
-    marginTop: '14px',
-    flexWrap: 'wrap',
-  },
-  weakWordChip: {
-    backgroundColor: 'var(--white)',
-    color: 'var(--danger)',
-    fontWeight: 700,
-    fontSize: '14px',
-    padding: '6px 14px',
-    borderRadius: '999px',
-  },
-  sectionCard: {
-    backgroundColor: 'var(--white)',
-    borderRadius: '26px',
-    padding: '24px',
-    border: '1px solid var(--mist)',
-    boxShadow: 'var(--shadow-card)',
-  },
-  sectionHead: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '8px',
-  },
-  sectionTitle: {
-    fontSize: '18px',
-    fontWeight: 600,
-    color: 'var(--forest)',
-  },
-  sectionSubtitle: {
-    fontSize: '13px',
-    color: 'var(--muted)',
-    marginTop: '4px',
-    marginBottom: '16px',
-  },
-  countPill: {
-    backgroundColor: 'var(--honey)',
-    color: 'var(--forest)',
-    fontWeight: 700,
-    fontSize: '13px',
-    padding: '6px 12px',
-    borderRadius: '999px',
-  },
-  masteryGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: '16px',
-  },
-  masteryItem: {
-    backgroundColor: 'var(--meadow)',
-    borderRadius: '16px',
-    padding: '16px',
-    border: '1px solid var(--mist)',
-  },
-  masteryTopRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '12px',
-  },
-  soundCircle: {
-    fontSize: '18px',
-    fontWeight: 700,
-    color: 'var(--forest)',
-    backgroundColor: 'var(--sky)',
-    padding: '6px 12px',
-    borderRadius: '10px',
-  },
-  masteryPercent: {
-    display: 'block',
-    fontSize: '18px',
-    fontWeight: 700,
-    color: 'var(--forest)',
-    textAlign: 'right',
-  },
-  masteryAttempts: {
-    display: 'block',
-    fontSize: '11px',
-    color: 'var(--muted)',
-    textAlign: 'right',
-  },
-  progressBarTrack: {
-    height: '8px',
-    backgroundColor: 'var(--mist)',
-    borderRadius: '4px',
-    overflow: 'hidden',
-    marginBottom: '8px',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: '4px',
-  },
-  masteryStatus: {
-    fontSize: '12px',
-    fontWeight: 700,
-  },
-  statusWeak: { color: 'var(--danger)' },
-  statusMastered: { color: 'var(--leaf)' },
-  statusProficient: { color: 'var(--deep-leaf)' },
-  emptyState: {
-    padding: '20px',
-    textAlign: 'center',
-    color: 'var(--muted)',
-    fontSize: '14px',
-  },
-  levelList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-  },
-  levelRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-    padding: '12px 14px',
-    borderRadius: '18px',
-    backgroundColor: 'var(--meadow)',
-    border: '1px solid var(--mist)',
-  },
-  soundBadge: {
-    width: '42px',
-    height: '42px',
-    borderRadius: '21px',
-    backgroundColor: 'var(--honey)',
-    color: 'var(--forest)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    fontSize: '18px',
-    fontWeight: 700,
-  },
-  levelTitleRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  levelMeta: {
-    fontSize: '12px',
-    color: 'var(--muted)',
-    marginTop: '2px',
-  },
-  testBadge: {
-    backgroundColor: 'var(--mint)',
-    color: 'var(--forest)',
-    fontWeight: 700,
-    fontSize: '11px',
-    padding: '2px 8px',
-    borderRadius: '999px',
-  },
-  statusChip: {
-    fontSize: '12px',
-    fontWeight: 700,
-    padding: '6px 10px',
-    borderRadius: '999px',
-    whiteSpace: 'nowrap',
-  },
-  playChip: {
-    fontSize: '12px',
-    fontWeight: 700,
-    padding: '10px 14px',
-    borderRadius: '999px',
-    backgroundColor: 'var(--forest)',
-    color: 'var(--white)',
-    minHeight: 44,
-  },
 };

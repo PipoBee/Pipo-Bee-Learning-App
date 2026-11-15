@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { supabase } from '../utils/supabase';
+import { authRedirectTo, supabase } from '../utils/supabase';
 
 const API_BASE = '/api/v1';
 const TOKEN_KEY = 'phonicsquest_token';
@@ -79,6 +79,20 @@ async function loadUserProfile(userId: string, accessToken: string) {
   });
 }
 
+function friendlyAuthError(error: { message?: string } | null, fallback: string) {
+  const message = (error?.message || '').toLowerCase();
+  if (message.includes('invalid login') || message.includes('invalid credentials')) {
+    return 'Email or password is incorrect';
+  }
+  if (message.includes('already registered') || message.includes('user already')) {
+    return 'This email is already registered. Sign in instead.';
+  }
+  if (message.includes('email not confirmed')) {
+    return 'Please confirm your email before signing in.';
+  }
+  return error?.message || fallback;
+}
+
 export const AuthAPI = {
   login: async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -86,7 +100,7 @@ export const AuthAPI = {
       password,
     });
     if (error || !data.session || !data.user) {
-      throw new Error(error?.message || 'Invalid email or password');
+      throw new Error(friendlyAuthError(error, 'Email or password is incorrect'));
     }
     return loadUserProfile(data.user.id, data.session.access_token);
   },
@@ -95,23 +109,80 @@ export const AuthAPI = {
     fullName: string;
     email: string;
     password: string;
-    role: 'STUDENT' | 'PARENT';
+    role: 'STUDENT' | 'PARENT' | 'student' | 'parent';
+    phone?: string;
+    country?: string;
+    city?: string;
   }) => {
+    const role = String(payload.role).toLowerCase() === 'parent' ? 'parent' : 'student';
     const { data, error } = await supabase.auth.signUp({
       email: payload.email.trim().toLowerCase(),
       password: payload.password,
       options: {
+        emailRedirectTo: authRedirectTo('/auth/callback'),
         data: {
           full_name: payload.fullName.trim(),
-          role: payload.role,
+          role,
+          phone: payload.phone || null,
+          country: payload.country || null,
+          city: payload.city || null,
         },
       },
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(friendlyAuthError(error, 'Could not create account'));
     if (!data.session || !data.user) {
-      throw new Error('Account created. Check your email to confirm, then sign in.');
+      return {
+        needsEmailConfirmation: true as const,
+        email: payload.email.trim().toLowerCase(),
+      };
     }
-    return loadUserProfile(data.user.id, data.session.access_token);
+    return {
+      needsEmailConfirmation: false as const,
+      ...(await loadUserProfile(data.user.id, data.session.access_token)),
+    };
+  },
+
+  signInWithGoogle: async () => {
+    // redirectTo must use the current origin so localhost and 127.0.0.1 never mix
+    // (mixed hosts break PKCE because the code_verifier lives in that origin's storage).
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: authRedirectTo('/auth/callback'),
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'select_account',
+        },
+        skipBrowserRedirect: false,
+      },
+    });
+    if (error) throw new Error(error.message || 'Could not start Google sign-in');
+    if (!data?.url) {
+      throw new Error('Google sign-in did not start. Check Google is enabled in Supabase Auth.');
+    }
+  },
+
+  requestPasswordReset: async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: authRedirectTo('/reset-password'),
+    });
+    if (error) throw new Error(error.message || 'Could not send reset email');
+  },
+
+  updatePassword: async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw new Error(error.message || 'Could not update password');
+  },
+
+  resendConfirmation: async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim().toLowerCase(),
+      options: {
+        emailRedirectTo: authRedirectTo('/auth/callback'),
+      },
+    });
+    if (error) throw new Error(error.message || 'Could not resend confirmation email');
   },
 
   me: async () => {
@@ -131,8 +202,17 @@ export const AuthAPI = {
     }
   },
 
-  logout: () => {
-    void supabase.auth.signOut();
+  restoreSession: async (): Promise<AppUser | null> => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session?.user) {
+      return null;
+    }
+    const payload = await loadUserProfile(data.session.user.id, data.session.access_token);
+    return payload.user;
+  },
+
+  logout: async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(LEGACY_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);

@@ -1,0 +1,25 @@
+{
+  "name": "Pipo Bee",
+  "short_name": "Pipo Bee",
+  "description": "Learn English from letter sounds to stories with Pipo Bee.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F1FBF5",
+  "theme_color": "#0B3B33",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
