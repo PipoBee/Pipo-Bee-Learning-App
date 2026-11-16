@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { ToastProvider } from './components/auth/Toast';
 import { PublicOnly, RequireAuth } from './components/auth/RequireAuth';
@@ -219,6 +220,7 @@ export default function App() {
         <InstallAppPromptGate userSignedIn={Boolean(user) && !booting} />
       </BrowserRouter>
       {booting && <SplashLoader fading={splashFading} />}
+      <Analytics />
     </ToastProvider>
   );
 }

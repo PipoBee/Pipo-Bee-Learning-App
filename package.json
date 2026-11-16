@@ -12,11 +12,24 @@
     "dev:api": "npm run dev --workspace=@phonicsquest/api",
     "dev:mobile": "npm run dev --workspace=@phonicsquest/mobile",
     "build": "npm run build --workspaces --if-present",
+    "build:web": "npm run build --workspace=@phonicsquest/shared && npm run build --workspace=@phonicsquest/admin",
     "db:push": "npm run prisma:db:push --workspace=@phonicsquest/api",
     "db:seed": "npm run prisma:seed --workspace=@phonicsquest/api",
     "db:setup": "npm run db:push && npm run db:seed"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "@phonicsquest/admin": {
+      "typescript": "5.9.3"
+    },
+    "@phonicsquest/api": {
+      "typescript": "5.9.3"
+    },
+    "@phonicsquest/shared": {
+      "typescript": "5.9.3"
+    }
   }
 }

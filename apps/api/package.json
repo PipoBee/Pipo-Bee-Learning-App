@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nest start --watch",
     "start": "node dist/src/main.js",
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "prisma:generate": "prisma generate",
     "prisma:db:push": "prisma db push",
     "prisma:seed": "ts-node prisma/seed.ts"
@@ -44,6 +44,6 @@
     "@types/passport-jwt": "^4.0.1",
     "prisma": "^5.14.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
+    "typescript": "5.9.3"
   }
 }
