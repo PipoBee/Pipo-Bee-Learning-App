@@ -103,8 +103,13 @@ EXPO_PUBLIC_AZURE_SPEECH_ENABLED=false
 
 1. Point `DATABASE_URL` / `DIRECT_URL` at Supabase (or managed Postgres), not localhost.
 2. Rotate `JWT_SECRET` away from the local-dev default.
-3. Confirm admin build has both `VITE_SUPABASE_*` values.
-4. Confirm API has `SUPABASE_SECRET_KEY` (never in admin/mobile).
-5. Set Supabase Auth redirect URLs to the production admin origin.
-6. Set mobile `EXPO_PUBLIC_API_BASE_URL` to the public API.
-7. Prefer durable object storage over local `./uploads` for multi-instance hosts.
+3. Confirm admin build has both `VITE_SUPABASE_*` values — paste the **full** publishable key (truncated keys cause `Invalid API key` on login).
+4. After changing any `VITE_*` on Vercel, **Redeploy** (Vite inlines them at build time).
+5. Confirm API has `SUPABASE_SECRET_KEY` (never in admin/mobile).
+6. Set Supabase Auth Site URL to `https://www.pipobee.com` and Redirect URLs to include:
+   - `https://www.pipobee.com/auth/callback`
+   - `https://www.pipobee.com/reset-password`
+   - (optional) apex `https://pipobee.com/...` equivalents
+7. Google Cloud OAuth client: authorized JS origin `https://www.pipobee.com`.
+8. Set mobile `EXPO_PUBLIC_API_BASE_URL` to the public API.
+9. Prefer durable object storage over local `./uploads` for multi-instance hosts.
