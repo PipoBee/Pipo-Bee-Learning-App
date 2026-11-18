@@ -30,14 +30,24 @@ These steps happen in dashboards, not in code. Do them once for local developmen
 
 1. Go to **Authentication → URL Configuration**.
 2. **Site URL**
-   - Production: `https://your-production-domain.com`
-   - For local-only testing you can temporarily use `http://localhost:5173`
+   - Production (canonical): `https://www.pipobee.com`  
+     (`pipobee.com` currently 308-redirects to `www` — keep Site URL on www)
+   - Local: `http://localhost:5173`
 3. **Redirect URLs** (add all that apply)
    - `http://localhost:5173/auth/callback`
    - `http://localhost:5173/reset-password`
-   - `https://your-production-domain.com/auth/callback`
-   - `https://your-production-domain.com/reset-password`
+   - `https://www.pipobee.com/auth/callback`
+   - `https://www.pipobee.com/reset-password`
+   - `https://pipobee.com/auth/callback`
+   - `https://pipobee.com/reset-password`
 4. Save.
+
+## 3b) Google Cloud → authorized origins (production)
+
+Under the same OAuth Web client, also add:
+
+- JavaScript origin: `https://www.pipobee.com`
+- JavaScript origin: `https://pipobee.com` (optional; traffic redirects to www)
 
 ## 4) Environment variables
 
@@ -47,6 +57,9 @@ Copy `apps/admin/.env.example` to `apps/admin/.env` and fill in:
 VITE_SUPABASE_URL=https://<SUPABASE_PROJECT_REF>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-anon-key
 ```
+
+**Vercel (Production):** set the same two `VITE_*` vars, then **Redeploy**.  
+Vite inlines them at build time. A truncated publishable key causes `Invalid API key` on login and breaks Google OAuth.
 
 Never put the service role key in the admin app. Keep it in `apps/api/.env` only.
 

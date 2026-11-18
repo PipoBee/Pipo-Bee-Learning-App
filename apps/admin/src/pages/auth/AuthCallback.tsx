@@ -6,18 +6,25 @@ import { AuthLayout } from '../../components/auth/AuthLayout';
 import { AuthAPI } from '../../services/api';
 import { ProfileAPI } from '../../services/profile';
 import { playLoginMusic } from '../../services/loginMusic';
-import { supabase } from '../../utils/supabase';
+import { supabase, supabaseConfigError } from '../../utils/supabase';
 
 /**
  * Module-level guard so React StrictMode (mount → unmount → remount) cannot
- * run the post-login redirect twice. Do NOT call exchangeCodeForSession here:
- * the shared client already has detectSessionInUrl + PKCE and exchanges once.
+ * run the post-login redirect twice.
  */
 let callbackRedirectStarted = false;
 
 type Props = {
   onAuthed: () => Promise<void> | void;
 };
+
+function hostHint(): string {
+  const host = window.location.host;
+  if (host.includes('localhost') || host.startsWith('127.0.0.1')) {
+    return 'Use the same host you started from (localhost or 127.0.0.1).';
+  }
+  return `Stay on ${host} (do not switch between www and non-www). Confirm ${window.location.origin}/auth/callback is listed under Supabase Auth → URL Configuration → Redirect URLs.`;
+}
 
 export const AuthCallback: React.FC<Props> = ({ onAuthed }) => {
   const navigate = useNavigate();
@@ -27,6 +34,11 @@ export const AuthCallback: React.FC<Props> = ({ onAuthed }) => {
   useEffect(() => {
     let cancelled = false;
     let settled = false;
+
+    if (supabaseConfigError) {
+      setError(supabaseConfigError);
+      return;
+    }
 
     const url = new URL(window.location.href);
     const oauthError = url.searchParams.get('error_description') || url.searchParams.get('error');
@@ -42,7 +54,6 @@ export const AuthCallback: React.FC<Props> = ({ onAuthed }) => {
 
       try {
         setStatus('Loading your profile…');
-        // Persist app user token/profile for the rest of the SPA.
         await AuthAPI.restoreSession();
         playLoginMusic();
         await onAuthed();
@@ -51,7 +62,6 @@ export const AuthCallback: React.FC<Props> = ({ onAuthed }) => {
         const user = AuthAPI.getStoredUser();
         const next = ProfileAPI.nextRoute(profile, user?.role);
 
-        // Clean OAuth params so a refresh does not re-enter the callback flow.
         window.history.replaceState({}, document.title, '/auth/callback');
         navigate(next, { replace: true });
       } catch (err: any) {
@@ -72,6 +82,30 @@ export const AuthCallback: React.FC<Props> = ({ onAuthed }) => {
         return;
       }
 
+      const code = url.searchParams.get('code');
+      if (code) {
+        setStatus('Confirming Google sign-in…');
+        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (cancelled) return;
+        if (exchangeError) {
+          const msg = (exchangeError.message || '').toLowerCase();
+          if (msg.includes('invalid api key')) {
+            setError(
+              'Invalid API key. Set the full VITE_SUPABASE_PUBLISHABLE_KEY in Vercel (Production) and redeploy.',
+            );
+          } else if (msg.includes('verifier') || msg.includes('pkce') || msg.includes('code challenge')) {
+            setError(`Google sign-in could not verify this browser session. ${hostHint()}`);
+          } else {
+            setError(exchangeError.message || 'Could not finish Google sign-in.');
+          }
+          return;
+        }
+        if (data.session) {
+          await continueWithSession(data.session);
+          return;
+        }
+      }
+
       setStatus('Connecting your Google account…');
 
       const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -81,7 +115,6 @@ export const AuthCallback: React.FC<Props> = ({ onAuthed }) => {
         }
       });
 
-      // Safety net: poll briefly in case the auth event fired before we subscribed.
       const started = Date.now();
       const poll = window.setInterval(async () => {
         if (cancelled || settled) {
@@ -94,12 +127,10 @@ export const AuthCallback: React.FC<Props> = ({ onAuthed }) => {
           await continueWithSession(data.session);
           return;
         }
-        if (Date.now() - started > 10000) {
+        if (Date.now() - started > 12000) {
           window.clearInterval(poll);
           if (!cancelled && !settled) {
-            setError(
-              'Sign-in timed out. Return to sign in and try Google again. Use the same host you started from (localhost or 127.0.0.1).',
-            );
+            setError(`Sign-in timed out. Return to sign in and try Google again. ${hostHint()}`);
           }
         }
       }, 250);

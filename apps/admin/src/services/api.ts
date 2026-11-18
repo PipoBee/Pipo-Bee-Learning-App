@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { authRedirectTo, supabase } from '../utils/supabase';
+import { authRedirectTo, supabase, supabaseConfigError } from '../utils/supabase';
 
 const API_BASE = '/api/v1';
 const TOKEN_KEY = 'phonicsquest_token';
@@ -81,6 +81,9 @@ async function loadUserProfile(userId: string, accessToken: string) {
 
 function friendlyAuthError(error: { message?: string } | null, fallback: string) {
   const message = (error?.message || '').toLowerCase();
+  if (message.includes('invalid api key') || message.includes('invalid jwt')) {
+    return 'Invalid API key. Set the full VITE_SUPABASE_PUBLISHABLE_KEY in Vercel (Production) and redeploy.';
+  }
   if (message.includes('invalid login') || message.includes('invalid credentials')) {
     return 'Email or password is incorrect';
   }
@@ -93,8 +96,15 @@ function friendlyAuthError(error: { message?: string } | null, fallback: string)
   return error?.message || fallback;
 }
 
+function assertSupabaseConfigured() {
+  if (supabaseConfigError) {
+    throw new Error(supabaseConfigError);
+  }
+}
+
 export const AuthAPI = {
   login: async (email: string, password: string) => {
+    assertSupabaseConfigured();
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
@@ -114,6 +124,7 @@ export const AuthAPI = {
     country?: string;
     city?: string;
   }) => {
+    assertSupabaseConfigured();
     const role = String(payload.role).toLowerCase() === 'parent' ? 'parent' : 'student';
     const { data, error } = await supabase.auth.signUp({
       email: payload.email.trim().toLowerCase(),
@@ -143,8 +154,10 @@ export const AuthAPI = {
   },
 
   signInWithGoogle: async () => {
-    // redirectTo must use the current origin so localhost and 127.0.0.1 never mix
+    assertSupabaseConfigured();
+    // redirectTo must use the current origin so hosts never mix
     // (mixed hosts break PKCE because the code_verifier lives in that origin's storage).
+    // Prefer https://www.pipobee.com consistently — apex pipobee.com 308s to www.
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -156,7 +169,7 @@ export const AuthAPI = {
         skipBrowserRedirect: false,
       },
     });
-    if (error) throw new Error(error.message || 'Could not start Google sign-in');
+    if (error) throw new Error(friendlyAuthError(error, 'Could not start Google sign-in'));
     if (!data?.url) {
       throw new Error('Google sign-in did not start. Check Google is enabled in Supabase Auth.');
     }
